@@ -1,13 +1,20 @@
 import { Camera, CameraType } from "expo-camera";
-import { useState } from "react";
-import { Button, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState, useRef } from "react";
+import { Button, StyleSheet, Text, View } from "react-native";
 import RecordButton from "../components/record-button";
+import ToggleButton from "../components/toggle-button";
+import IconButton from "../components/icon-button";
+import { Link } from "expo-router";
 
 export default function App() {
   const [type, setType] = useState(CameraType.back);
+  const [recordStatus, setRecordStatus] = useState("idle");
+  const [micOn, setMicOn] = useState(false);
+  const cameraRef = useRef(null);
   const [permissionCam, requestPermissionCam] = Camera.useCameraPermissions();
   const [permissionMic, requestPermissionMic] =
     Camera.useMicrophonePermissions();
+  const [file, setFile] = useState(false);
 
   if (!permissionCam || !permissionMic) {
     // Camera permissions are still loading
@@ -43,14 +50,50 @@ export default function App() {
     );
   }
 
+  function handleRecordResult(uri) {
+    setFile(uri);
+  }
+
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type}>
+      <Camera style={styles.camera} type={type} ref={cameraRef}>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraType}>
-            <Text style={styles.text}>Flip Camera</Text>
-          </TouchableOpacity>
-          <RecordButton size={72} />
+          <View>
+            {!file ? (
+              <RecordButton
+                size={70}
+                cameraRef={cameraRef}
+                handleResult={handleRecordResult}
+                updateStatus={setRecordStatus}
+                mute={!micOn}
+              />
+            ) : (
+              <IconButton
+                size={60}
+                icon={"send"}
+                iconColor="black"
+                style={{ backgroundColor: "#fdca02" }}
+              />
+            )}
+          </View>
+          {recordStatus === "idle" && (
+            <View style={styles.optionsContainer}>
+              <ToggleButton
+                onIcon={"mic"}
+                offIcon={"mic-off"}
+                onToggle={setMicOn}
+                defaultValue={micOn}
+              />
+              <IconButton
+                size={30}
+                icon={"refresh-circle"}
+                onPress={toggleCameraType}
+              />
+            </View>
+          )}
+          <Link href="/" asChild>
+            <IconButton size={30} icon={"close"} style={styles.closeButton} />
+          </Link>
         </View>
       </Camera>
     </View>
@@ -64,21 +107,25 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+    backgroundColor: "gray",
   },
   buttonContainer: {
-    flex: 1,
     flexDirection: "row",
     backgroundColor: "transparent",
-    margin: 64,
-  },
-  button: {
-    flex: 1,
-    alignSelf: "flex-end",
+    justifyContent: "center",
     alignItems: "center",
+    position: "absolute",
+    bottom: 10,
+    width: "100%",
   },
-  text: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
+  optionsContainer: {
+    position: "absolute",
+    right: 10,
+    gap: 10,
+    flexDirection: "row",
+  },
+  closeButton: {
+    position: "absolute",
+    left: 10,
   },
 });

@@ -1,5 +1,12 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Camera } from "expo-camera";
+import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -9,33 +16,81 @@ import Svg, { Path } from "react-native-svg";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const RecordButton = ({ size = 100 }) => {
-  const [isRecording, setIsRecording] = useState(false);
+const RecordButton = ({
+  size = 70,
+  time = 30,
+  cameraRef,
+  mute = false,
+  handleResult = (uri) => {},
+  updateStatus = (status) => {},
+}) => {
+  const [isRecording, setIsRecording] = useState(() => {
+    updateStatus("idle");
+    return false;
+  });
   const progress = useSharedValue(0);
+  const [timeText, setTimeText] = useState("00:30");
+  const intervalHandle = useRef(null);
+
+  useEffect(() => {
+    return () =>
+      intervalHandle.current && clearInterval(intervalHandle.current);
+  }, []);
 
   const radius = size / 2 - 2;
   const circumference = radius * 2 * Math.PI;
 
   const animatedProps = useAnimatedProps(() => {
-    const strokeDashoffset = circumference * (1 - progress.value);
+    const strokeDashoffset = (circumference * (time - progress.value)) / time;
     return {
       strokeDashoffset,
     };
   });
-
-  const handlePress = useCallback(() => {
-    setIsRecording((prevState) => {
-      if (!prevState) {
-        progress.value = withTiming(1, { duration: 30000 });
-      } else {
-        progress.value = 0;
+  const handleEnd = (uri = "") => {
+    intervalHandle.current && clearInterval(intervalHandle.current);
+    progress.value = 0;
+    setIsRecording(false);
+    setTimeText("00:" + time);
+    if (uri) {
+      updateStatus("stopped");
+      handleResult(uri);
+    } else {
+      updateStatus("idle");
+    }
+  };
+  const handlePress = () => {
+    if (!isRecording) {
+      if (cameraRef.current) {
+        intervalHandle.current = setInterval(() => {
+          const seconds = time - Math.ceil(progress.value);
+          setTimeText(`00:${seconds.toString().padStart(2, "0")}`);
+        }, 1000);
+        progress.value = withTiming(time, { duration: 30000 });
+        updateStatus("recording");
+        setIsRecording(true);
+        cameraRef.current
+          .recordAsync({
+            quality: Camera.Constants.VideoQuality["720p"], // You can set quality
+            maxDuration: time, // You can set a maximum duration (in seconds)
+            mute, // mute the recording
+          })
+          .then((data) => {
+            handleEnd(data.uri);
+          })
+          .catch(() => {
+            handleEnd();
+          });
       }
-      return !prevState;
-    });
-  }, [setIsRecording]);
+    } else {
+      if (cameraRef.current) {
+        cameraRef.current.stopRecording();
+      }
+    }
+  };
   const containerStyle = useMemo(() => {
     return [styles.container, { width: size, height: size }];
   }, [size]);
+
   const innerViewSize = isRecording ? (size - 4) / 2 : size - 12;
   const dynamicStyles = {
     innerView: {
@@ -51,6 +106,7 @@ const RecordButton = ({ size = 100 }) => {
 
   return (
     <View style={styles.center}>
+      <Text style={styles.countdownText}>{timeText}</Text>
       <TouchableOpacity onPress={handlePress}>
         <View style={containerStyle}>
           <Svg width={size} height={size}>
@@ -101,6 +157,11 @@ const styles = StyleSheet.create({
     top: "50%",
     left: "50%",
     backgroundColor: "white",
+  },
+  countdownText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
   },
 });
 
