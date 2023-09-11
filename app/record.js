@@ -1,12 +1,14 @@
 import { Camera, CameraType } from "expo-camera";
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 import { Button, StyleSheet, Text, View } from "react-native";
 import RecordButton from "../components/record-button";
 import ToggleButton from "../components/toggle-button";
 import IconButton from "../components/icon-button";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
+import { ValueContext } from "./_layout";
 
 export default function App() {
+  const { setValue } = useContext(ValueContext);
   const [type, setType] = useState(CameraType.back);
   const [recordStatus, setRecordStatus] = useState("idle");
   const [micOn, setMicOn] = useState(false);
@@ -52,6 +54,11 @@ export default function App() {
 
   function handleRecordResult(uri) {
     setFile(uri);
+    setValue(uri);
+  }
+
+  function sendVideo() {
+    router.replace("/replay");
   }
 
   return (
@@ -73,6 +80,7 @@ export default function App() {
                 icon={"send"}
                 iconColor="black"
                 style={{ backgroundColor: "#fdca02" }}
+                onPress={sendVideo}
               />
             )}
           </View>
@@ -104,6 +112,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
+    width: "100%",
   },
   camera: {
     flex: 1,
