@@ -1,6 +1,13 @@
 import { Camera, CameraType } from "expo-camera";
 import { useState, useRef, useContext } from "react";
-import { Button, StyleSheet, Text, View } from "react-native";
+import {
+  Button,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Animated,
+} from "react-native";
 import RecordButton from "../components/record-button";
 import ToggleButton from "../components/toggle-button";
 import IconButton from "../components/icon-button";
@@ -8,7 +15,7 @@ import { Link, router } from "expo-router";
 import { ValueContext } from "./_layout";
 
 export default function App() {
-  const { setValue } = useContext(ValueContext);
+  const { value, setValue } = useContext(ValueContext);
   const [type, setType] = useState(CameraType.back);
   const [recordStatus, setRecordStatus] = useState("idle");
   const [micOn, setMicOn] = useState(false);
@@ -16,7 +23,6 @@ export default function App() {
   const [permissionCam, requestPermissionCam] = Camera.useCameraPermissions();
   const [permissionMic, requestPermissionMic] =
     Camera.useMicrophonePermissions();
-  const [file, setFile] = useState(false);
 
   if (!permissionCam || !permissionMic) {
     // Camera permissions are still loading
@@ -53,57 +59,96 @@ export default function App() {
   }
 
   function handleRecordResult(uri) {
-    setFile(uri);
-    setValue(uri);
+    setValue({
+      ...value,
+      uri,
+    });
   }
 
   function sendVideo() {
     router.replace("/replay");
   }
 
+  function toggleReplaySetting(setting) {
+    setValue({
+      ...value,
+      replaySetting: setting,
+    });
+  }
+
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type} ref={cameraRef}>
-        <View style={styles.buttonContainer}>
-          <View>
-            {!file ? (
-              <RecordButton
-                size={70}
-                cameraRef={cameraRef}
-                handleResult={handleRecordResult}
-                updateStatus={setRecordStatus}
-                mute={!micOn}
-              />
-            ) : (
-              <IconButton
-                size={60}
-                icon={"send"}
-                iconColor="black"
-                style={{ backgroundColor: "#fdca02" }}
-                onPress={sendVideo}
-              />
-            )}
-          </View>
-          {recordStatus === "idle" && (
-            <View style={styles.optionsContainer}>
-              <ToggleButton
-                onIcon={"mic"}
-                offIcon={"mic-off"}
-                onToggle={setMicOn}
-                defaultValue={micOn}
-              />
-              <IconButton
-                size={30}
-                icon={"refresh-circle"}
-                onPress={toggleCameraType}
-              />
-            </View>
+      <Camera style={styles.camera} type={type} ref={cameraRef} />
+      <Animated.View
+        style={[
+          styles.buttonContainer,
+          recordStatus !== "stopped" || !value.uri ? { bottom: 50 } : {},
+        ]}
+      >
+        <View>
+          {!value.uri ? (
+            <RecordButton
+              size={70}
+              cameraRef={cameraRef}
+              handleResult={handleRecordResult}
+              updateStatus={setRecordStatus}
+              mute={!micOn}
+            />
+          ) : (
+            <IconButton
+              size={60}
+              icon={"send"}
+              iconColor="black"
+              style={{ backgroundColor: "#fdca02" }}
+              onPress={sendVideo}
+            />
           )}
-          <Link href="/" asChild>
-            <IconButton size={30} icon={"close"} style={styles.closeButton} />
-          </Link>
         </View>
-      </Camera>
+        {recordStatus === "idle" && (
+          <View style={styles.optionsContainer}>
+            <ToggleButton
+              onIcon={"mic"}
+              offIcon={"mic-off"}
+              onToggle={setMicOn}
+              defaultValue={micOn}
+            />
+            <IconButton
+              size={30}
+              icon={"refresh-circle"}
+              onPress={toggleCameraType}
+            />
+          </View>
+        )}
+        <Link href="/" asChild>
+          <IconButton size={30} icon={"close"} style={styles.closeButton} />
+        </Link>
+      </Animated.View>
+      {recordStatus === "stopped" && value.uri && (
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity onPress={() => toggleReplaySetting("allowReplay")}>
+            <Text
+              style={
+                value.replaySetting === "allowReplay"
+                  ? styles.selected
+                  : styles.notSelected
+              }
+            >
+              ALLOW REPLAY
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => toggleReplaySetting("viewOnce")}>
+            <Text
+              style={
+                value.replaySetting === "viewOnce"
+                  ? styles.selected
+                  : styles.notSelected
+              }
+            >
+              VIEW ONCE
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -124,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "absolute",
-    bottom: 10,
+    bottom: 100,
     width: "100%",
   },
   optionsContainer: {
@@ -136,5 +181,24 @@ const styles = StyleSheet.create({
   closeButton: {
     position: "absolute",
     left: 10,
+  },
+  sendButton: {
+    backgroundColor: "#fdca02",
+  },
+  toggleContainer: {
+    bottom: 0,
+    width: "100%",
+    height: 50,
+    backgroundColor: "black",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  selected: {
+    color: "#fdca02",
+  },
+  notSelected: {
+    color: "gray",
   },
 });

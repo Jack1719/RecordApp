@@ -1,16 +1,19 @@
 import { createContext, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { SafeAreaView, StyleSheet, View } from "react-native";
 import { Slot } from "expo-router";
 
 export const ValueContext = createContext(null);
 
 export default function HomeLayout() {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState({
+    uri: "",
+    replaySetting: "allowReplay",
+  });
   return (
     <ValueContext.Provider value={{ value, setValue }}>
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Slot />
-      </View>
+      </SafeAreaView>
     </ValueContext.Provider>
   );
 }
