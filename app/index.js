@@ -3,7 +3,7 @@ import { Link } from "expo-router";
 
 export default function Page() {
   return (
-    <Link href="/record" asChild>
+    <Link href="/chat" asChild>
       <Pressable>
         <Text>Let's Go!</Text>
       </Pressable>
